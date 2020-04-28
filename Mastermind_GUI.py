@@ -13,17 +13,17 @@ import random
 class UI(wx.Frame):
     
     def __init__(self, *args, **kwargs):
-        
         # Create frame and panel
         wx.Frame.__init__(self, None)
         self.pnl = wx.Panel(self, -1)
         
-        # Initialize UI and dictionaries of buttons colours/positions/sizes
+        # Initialize UI with default variables and dictionaries of buttons colours/positions/sizes
         self.SetGameDefaults()
-        self.ReferenceDicts()
+        self.ReferenceDicts_Size()
+        self.ReferenceDicts_Colour()
         self.InitUI()
         
-        # Create buttons
+        # Create UI based on variables initialized above
         self.GameScreen_Create()
         
     # ***************************************************************************************************
@@ -32,47 +32,63 @@ class UI(wx.Frame):
 
     def SetGameDefaults(self):
         # Defaults relating to code length
+        # (Code length restricted to 3 and 6 without additional code changes)
         self.code_length = 4
         self.min_code_length = 3
         self.max_code_length = 6
         
         # Defaults relating to doubles/triples/etc.
         self.multiples = 'Off'
-        self.max_instance_of_each_colour = 1
+        self.max_instance_of_each_colour = 1 if self.multiples == 'Off' else self.code_length
         
-        # Defaults relating to guess qty and scrolling
-        self.this_turn = 1
+        # Maximum number of guesses permitted before game lost (if 0, there is no maximum)
         self.max_guesses = 0
+        
+        # Number of previous guesses displayed at once in the UI
+        # (above this number, scroll buttons will appear)
         self.max_guesses_displayed = 6
+        
+        # Initialize turn counter and blank first guess
+        self.this_turn = 1
+        self.current_guess = [''] * self.code_length
+        
+        # Initialize scroll variables (to hide scroll buttons initially)
         self.scroll_on = False
         self.scroll_up_on = False
         self.scroll_down_on = False
         self.scroll_index = 0
         
-    def ReferenceDicts(self):
-        # Possible colours
-        self.colours = [ 'red', 'orange', 'yellow', 'green',
-                         'blue', 'violet', 'purple', 'pink' ]
-                         
+        # Arrays for buttons/guesses/responses
+        # Arrays for storing different coloured buttons so that they can be changed quickly when
+        # the palette is changed
+        self.UI_buttons = []
+        self.UI_nullButtons = []
+        self.UI_dark = []
+
+        # Storage of previous guesses/responses/turn count
+        self.prev_guesses = []
+        self.prev_guess_buttons = []
+        self.responses = []
+        self.response_buttons = []
+        self.response_text = []
+        self.turn_buttons = []
+        self.turn_text = []
+        self.guess_buttons = []
+        
+    def ReferenceDicts_Size(self):
         # Size constants
-        peg_size = 60
-        response_size = peg_size / 2
-        spacer_1 = 10
-        spacer_2 = 5
-        div_x = 2
-        turn_x = peg_size * 1
-        self.peg_size = peg_size
-        self.spacer_1 = spacer_1
-        self.spacer_2 = spacer_2
-        buffer = (self.max_code_length - self.code_length) * (peg_size + spacer_2) / 2
+        peg_size = 60 # Size of colour and guess pegs
+        spacer_1 = 10 # Larger spacer for distance between widgets and frame and between groups of widgets
+        spacer_2 = 5 # Smaller spacer for distance between widgets in the same group
+        div_x = 2 # Width of the line separating the side bar from the game board
         
         # Size calculations
-        answer_bar_x = peg_size * 4 + response_size + spacer_2 * 6
-        guess_bar_x = answer_bar_x - spacer_2 * 2 + spacer_1 * 2
+        buffer = (self.max_code_length - self.code_length) * (peg_size + spacer_2) / 2
+        guess_bar_x = peg_size * 4 + peg_size / 2 + spacer_2 * 6 - spacer_2 * 2 + spacer_1 * 2
         guess_bar_y = spacer_1 * 3 + peg_size * 3 / 2
         previous_guess_bar_x = spacer_2 * 2 + peg_size
         previous_guess_bar_y = spacer_2 * 2 + peg_size
-        frame_x = spacer_1 * 2 + peg_size * self.max_code_length + turn_x + guess_bar_x + spacer_1 * 2 + spacer_2
+        frame_x = spacer_1 * 2 + peg_size * (self.max_code_length + 1) + guess_bar_x + spacer_1 * 2 + spacer_2
         frame_y = max(spacer_1 * 3 + self.max_guesses_displayed * (peg_size + spacer_2) + spacer_2 + peg_size * 1.75,
                       peg_size * 6.5 + spacer_1 * 6 + spacer_2 * 5)
         
@@ -88,7 +104,7 @@ class UI(wx.Frame):
               'btn_sml' : (peg_size * 2 + spacer_2, peg_size / 2),
               'btn_med' : (peg_size * 4 + spacer_2 * 3, peg_size * 3 / 4),
               'btn_option' : (peg_size, peg_size / 2),
-              'turn' : (turn_x, peg_size / 2),
+              'turn' : (peg_size, peg_size / 2),
               'div' : (div_x, frame_y * 2)
              }
         self.control_sizes_dict = s
@@ -106,8 +122,7 @@ class UI(wx.Frame):
         prev_guess_peg_y = spacer_1 * 3 + peg_size * 2.5
         scroll_x = guess_peg_x + peg_size * self.code_length + spacer_2 * (self.code_length - 1) + spacer_1
         turn_btn_x = div_x + spacer_1 + buffer
-        turn_btn_y = 0 # Placeholder - value will be equal to applicable guess peg y value
-        turn_offset_x = 1#s['turn'][0] / 2
+        turn_offset_x = 1
         turn_offset_y = s['turn'][1] / 4
         restxt_offset_x = s['btn_sml'][0] / 3.3
         restxt_offset_y = s['btn_sml'][1] / 4
@@ -138,6 +153,7 @@ class UI(wx.Frame):
               'guess_peg_4' : (guess_peg_x + (peg_size + spacer_2) * 3, spacer_1),
               'guess_peg_5' : (guess_peg_x + (peg_size + spacer_2) * 4, spacer_1),
               'guess_peg_6' : (guess_peg_x + (peg_size + spacer_2) * 5, spacer_1),
+              'guess_peg_increment' : (peg_size + spacer_2, 0),
               'scroll_up' : (scroll_x, spacer_1),
               'scroll_down' : (scroll_x, spacer_1 + s['scroll'][1] + spacer_2),
               'submit' : (guess_peg_x, spacer_1 + spacer_2 + peg_size),
@@ -145,14 +161,19 @@ class UI(wx.Frame):
               'prev_guess_response_start' : (scroll_x, prev_guess_peg_y),
               'prev_guess_response2_start' : (scroll_x, prev_guess_peg_y + s['response'][1] + spacer_2),
               'div' : (div_x, -10),
-              'turn_no_btn' : (turn_btn_x, turn_btn_y),
+              'turn_no_btn' : (turn_btn_x, 0),
               'turn_btn_offset' : (0, peg_size / 4),
               'turn_text_offset' : (turn_offset_x, turn_offset_y),
               'response_text_offset' : (restxt_offset_x, restxt_offset_y)
              }
         self.control_positions_dict = p
 
-        # Peg colours
+    def ReferenceDicts_Colour(self):
+        # Possible colours
+        self.colours = [ 'red', 'orange', 'yellow', 'green',
+                         'blue', 'violet', 'purple', 'pink' ]
+        
+        # RGB colour codes for possible peg colours
         self.pegColours = { 'red' : wx.Colour(250, 130, 130),
                             'orange' : wx.Colour(250, 206, 105),
                             'yellow' : wx.Colour(255, 255, 158),
@@ -162,8 +183,10 @@ class UI(wx.Frame):
                             'purple' : wx.Colour(173, 105, 250),
                             'pink' : wx.Colour(251, 145, 255) }
                          
-        # Styles
+        # Available styles
         self.UI_styles = [ 'default', 'unicorn', 'jungle' ]
+
+        # RGB colour codes for colours used in styles
         self.colours_dict = { 'light blue' : wx.Colour(217, 252, 251),
                               'lavender' : wx.Colour(231, 217, 252),
                               'pink' : wx.Colour(253, 201, 255),
@@ -171,18 +194,18 @@ class UI(wx.Frame):
                               'white' : wx.Colour(255, 255, 255),
                               'light yellow' : wx.Colour(252, 252, 217),
                               'blue' : wx.Colour(18, 77, 255),
-                              'new_1' : wx.Colour(217, 252, 223),
-                              'new_2' : wx.Colour(250, 252, 217),
+                              'light green' : wx.Colour(217, 252, 223),
                               'light grey' : wx.Colour(230, 230, 230),
                               'medium grey' : wx.Colour(190, 190, 190),
                               'dark grey' : wx.Colour(74, 73, 74) }
 
+        # Colours corresponding to styles for background, regular buttons, and inactive (null) buttons
         self.UIcolour_background_dict = { 'default' : 'light grey',
                                           'beach' : 'light yellow', 
                                           'unicorn' : 'lavender',
                                           'circus' : 'white',
                                           'dark mode' : 'dark grey',
-                                          'jungle' : 'new_1'
+                                          'jungle' : 'light green'
                                          }
         self.UIcolour_button_dict = { 'default' : 'medium grey',
                                       'beach' : 'light blue', 
@@ -190,8 +213,7 @@ class UI(wx.Frame):
                                       'circus' : 'red',
                                       'dark mode' : 'light grey',
                                       'jungle' : 'light yellow'
-                                     }
-                                     
+                                     }       
         self.UIcolour_nullButton_dict = { 'default' : 'white',
                                           'beach' : 'white',
                                           'unicorn' : 'white',
@@ -207,39 +229,30 @@ class UI(wx.Frame):
         self.SetTitle('Mastermind')
         self.Centre()
         
-        # Arrays for buttons/guesses/responses
-        self.UI_buttons = []
-        self.UI_nullButtons = []
-        self.UI_dark = []
-        self.prev_guesses = []
-        self.prev_guess_buttons = []
-        self.responses = []
-        self.response_buttons = []
-        self.response_text = []
-        self.turn_buttons = []
-        self.turn_text = []
-        self.guess_buttons = []
-        self.win_lose_btn_on = False
-
         # Colour palette
         self.ChangePalette('unicorn')
         
-        # Initialize peg colour
+        # Initialize active peg colour
         self.CurrentPegColour = self.colours[0]
 
     def ChangePalette(self, style):
-        if style in self.UI_styles:
-            self.CurrentPalette = style
-            self.UIcolour_background = self.colours_dict[self.UIcolour_background_dict[style]]
-            self.SetBackgroundColour(self.UIcolour_background)
-            self.UIcolour_button = self.colours_dict[self.UIcolour_button_dict[style]]
-            self.UIcolour_nullButton = self.colours_dict[self.UIcolour_nullButton_dict[style]]
-            self.UIcolour_font = wx.BLACK
-            self.current_guess = [''] * self.code_length
-            for btn in self.UI_buttons:
-                btn.SetBaseColours(startcolour=self.UIcolour_button, foregroundcolour=self.UIcolour_font)
-            for btn in self.UI_nullButtons:
-                btn.SetBaseColours(startcolour=self.UIcolour_nullButton, foregroundcolour=self.UIcolour_font)
+        # Set style and colours corresponding with style
+        self.CurrentPalette = style
+        self.UIcolour_background = self.colours_dict[self.UIcolour_background_dict[style]]
+        self.UIcolour_button = self.colours_dict[self.UIcolour_button_dict[style]]
+        self.UIcolour_nullButton = self.colours_dict[self.UIcolour_nullButton_dict[style]]
+
+        # Keeping font colour consistent as otherwise palette changes would require deleting and replacing
+        # text (wx.StaticText object doesn't support colour change), but kept as variable in case code
+        # changes are made later to handle this
+        self.UIcolour_font = wx.BLACK
+        
+        # Set background and button colours
+        self.SetBackgroundColour(self.UIcolour_background)
+        for btn in self.UI_buttons:
+            btn.SetBaseColours(startcolour=self.UIcolour_button, foregroundcolour=self.UIcolour_font)
+        for btn in self.UI_nullButtons:
+            btn.SetBaseColours(startcolour=self.UIcolour_nullButton, foregroundcolour=self.UIcolour_font)
     
     # ***************************************************************************************************
     # SET UP GAME SCREEN*********************************************************************************
@@ -256,7 +269,7 @@ class UI(wx.Frame):
         self.GameScreen_Create_Guesses()
         
     def GameScreen_Create_MainControls(self):
-        # Get dictionaries
+        # Get dictionaries (with shortened name)
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
@@ -278,7 +291,7 @@ class UI(wx.Frame):
         self.GameScreen_Create_TurnButton()
         
     def GameScreen_Create_ColourControls(self):
-        # Get dictionaries
+        # Get dictionaries (with shortened name)
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
@@ -296,7 +309,7 @@ class UI(wx.Frame):
         self.btn_active = UI_btn(self.pnl, '', p['peg_active'], s['peg_active'], self.Inactive, self.pegColours[self.CurrentPegColour.lower()], disabled=True)
         
     def GameScreen_Create_Settings(self):
-        # Get dictionaries
+        # Get dictionaries (with shortened name)
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
@@ -331,7 +344,7 @@ class UI(wx.Frame):
         self.UI_nullButtons.append(self.btn_multi_2)
         
     def GameScreen_Create_Guesses(self):
-        # Get dictionaries
+        # Get dictionaries (with shortened name)
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
@@ -350,7 +363,7 @@ class UI(wx.Frame):
         self.GameScreen_CreateAdditionalGuesses()
         
     def GameScreen_CreateAdditionalGuesses(self):
-        # Get dictionaries
+        # Get dictionaries (with shortened name)
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
@@ -369,12 +382,13 @@ class UI(wx.Frame):
         self.current_guess = [''] * self.code_length
 
     def AdjustSubmitButton(self, create_new=False, null_button=False, new_label='Submit Guess'):
-        # Get dictionaries
+        # Get dictionaries (with shortened name)
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
         # Get index in array and destroy old submit button
-        self.UI_buttons.remove(self.btn_submit)
+        if self.btn_submit in self.UI_buttons : self.UI_buttons.remove(self.btn_submit)
+        if self.btn_submit in self.UI_nullButtons : self.UI_nullButtons.remove(self.btn_submit)
         self.btn_submit.Destroy()
         
         # Create new submit button if specified
@@ -392,7 +406,6 @@ class UI(wx.Frame):
                 self.UI_nullButtons.append(self.btn_submit)
             else:
                 self.UI_buttons.append(self.btn_submit)
-            
 
         # Get index in array and destroy old turn button
         self.UI_buttons.remove(self.turn_button)
@@ -473,7 +486,6 @@ class UI(wx.Frame):
     # ***************************************************************************************************
         
     def DisplayTurns(self):
-        # Change turn texts
         for i in range(0, len(self.turn_text)):
             this_turn_text = ('Turn ' + str(len(self.turn_text) - i + self.scroll_index)).rjust(7, ' ').rjust(8, ' ')
             self.turn_text[i].SetLabel(this_turn_text)
@@ -483,7 +495,7 @@ class UI(wx.Frame):
         self.turn_txt_current.SetLabel(('Turn ' + str(self.this_turn)).rjust(7, ' ').rjust(8, ' '))
         
     def GameScreen_Create_TurnButton(self):
-        # Get dictionaries
+        # Get dictionaries (with shortened name)
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
@@ -504,14 +516,12 @@ class UI(wx.Frame):
         
     def NewGame(self, event):
         self.ClearGameScreen()
-        self.AdjustSubmitButton(create_new=True)
         self.Code = self.RandomizeCode()
         self.EnableGuesses()
         self.ResetTurns()
         
     def RestartGame(self, event):
         self.ClearGameScreen()
-        self.AdjustSubmitButton(create_new=True)
         self.EnableGuesses()
         self.ResetTurns()
         
@@ -522,7 +532,7 @@ class UI(wx.Frame):
         self.txt_codelength.SetLabel(str(self.code_length))
         
         # Reset positioning based on additional buttons
-        self.ReferenceDicts()
+        self.ReferenceDicts_Size()
         
         # Restart game and get new code
         self.ClearGameScreen()
@@ -584,7 +594,7 @@ class UI(wx.Frame):
     
     def AddNewGuess(self):
         # Get size/position references
-        increment = self.peg_size + self.spacer_2
+        increment = self.control_positions_dict['guess_peg_increment'][0]
         pos_x_start = self.control_positions_dict['prev_guess_peg_start'][0]
         pos_y = self.control_positions_dict['prev_guess_peg_start'][1] + increment * (len(self.prev_guesses) - 1)
         peg_size = self.control_sizes_dict['peg']
@@ -798,18 +808,16 @@ class UI(wx.Frame):
     # ***************************************************************************************************
     
     def GameWin(self):
+        # Adjust submit button to reflect game won state and disable further guesses until new game started
+        btn_text = 'GAME WON ON TURN ' + str(self.this_turn)
+        self.AdjustSubmitButton(create_new=True, null_button=True, new_label=btn_text)
         self.DisableGuesses()
-        self.btn_winlose = UI_btn(self.pnl, 'GAME WON ON TURN ' + str(self.this_turn),
-                                  self.control_positions_dict['submit'], self.control_sizes_dict['submit'], 
-                                  self.SubmitGuess, self.UIcolour_nullButton, self.UIcolour_font)
-        self.win_lose_btn_on = True
         
     def GameLoss(self):
+        # Adjust submit button to reflect game won state and disable further guesses until new game started
+        btn_text = 'GAME LOST - OUT OF TURNS'
+        self.AdjustSubmitButton(create_new=True, null_button=True, new_label=btn_text)
         self.DisableGuesses()
-        self.btn_winlose = UI_btn(self.pnl, 'GAME LOST - OUT OF TURNS',
-                                  self.control_positions_dict['submit'], self.control_sizes_dict['submit'], 
-                                  self.SubmitGuess, self.UIcolour_nullButton, self.UIcolour_font)
-        self.win_lose_btn_on = True
         
     # ***************************************************************************************************
     # CLEAR SCREEN***************************************************************************************
@@ -835,10 +843,8 @@ class UI(wx.Frame):
             for txt in self.turn_text : txt.Destroy()
             for btn in self.turn_buttons : btn.Destroy()
             
-            # Remove win/lose button
-            if self.win_lose_btn_on:
-                self.btn_winlose.Destroy()
-                self.win_lose_btn_on = False
+            # Resize submit button
+            self.AdjustSubmitButton(create_new=True)
 
             # Remove scroll buttons
             if self.scroll_on:
