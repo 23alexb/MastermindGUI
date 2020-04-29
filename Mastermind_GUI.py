@@ -58,7 +58,6 @@ class UI(wx.Frame):
         self.scroll_down_on = False
         self.scroll_index = 0
         
-        # Arrays for buttons/guesses/responses
         # Arrays for storing different coloured buttons so that they can be changed quickly when
         # the palette is changed
         self.UI_buttons = []
@@ -229,10 +228,8 @@ class UI(wx.Frame):
         self.SetTitle('Mastermind')
         self.Centre()
         
-        # Colour palette
+        # Initialize colour palette and active peg colour
         self.ChangePalette('unicorn')
-        
-        # Initialize active peg colour
         self.CurrentPegColour = self.colours[0]
 
     def ChangePalette(self, style):
@@ -283,7 +280,7 @@ class UI(wx.Frame):
                                   self.RestartGame, self.UIcolour_button, self.UIcolour_font)
         self.UI_buttons.append(self.btn_restartGame)
         
-        # Divider
+        # Divider between game board and left panel
         self.div = UI_btn(self.pnl, '', p['div'], s['div'], self.Inactive, self.UIcolour_button, disabled=True)
         self.UI_buttons.append(self.div)
         
@@ -295,7 +292,7 @@ class UI(wx.Frame):
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
-        # For each colour
+        # Selection peg for each colour
         self.btn_red = UI_btn(self.pnl, '', p['peg_red'], s['peg'], self.Peg_Red, self.pegColours['red'])
         self.btn_orange = UI_btn(self.pnl, '', p['peg_orange'], s['peg'], self.Peg_Orange, self.pegColours['orange'])
         self.btn_yellow = UI_btn(self.pnl, '', p['peg_yellow'], s['peg'], self.Peg_Yellow, self.pegColours['yellow'])
@@ -313,7 +310,7 @@ class UI(wx.Frame):
         s = self.control_sizes_dict
         p = self.control_positions_dict
         
-        # Add palette button and give up button
+        # Palette button and give up button
         self.btn_palette = UI_btn(self.pnl, 'Change Palette', p['palette'], s['btn_sml'], 
                                   self.NextPalette, self.UIcolour_button, self.UIcolour_font)
         self.UI_buttons.append(self.btn_palette)
@@ -415,11 +412,28 @@ class UI(wx.Frame):
         # Create new turn button and add to array
         self.GameScreen_Create_TurnButton()
         
+    def GameScreen_Create_TurnButton(self):
+        # Get dictionaries (with shortened name)
+        s = self.control_sizes_dict
+        p = self.control_positions_dict
+        
+        # Turn button
+        turn_btn_x = p['turn_no_btn'][0]
+        turn_btn_y = p['guess_peg_1'][1] + self.control_positions_dict['turn_btn_offset'][1]
+        turn_text_x = turn_btn_x + p['turn_text_offset'][0]
+        turn_text_y = turn_btn_y + p['turn_text_offset'][1]
+        self.turn_button = UI_btn(self.pnl, '', (turn_btn_x, turn_btn_y), 
+                                  s['turn'], self.Inactive, self.UIcolour_button, disabled=True)
+        self.turn_txt_current = wx.StaticText(self.pnl, -1, ('Turn ' + str(self.this_turn)).rjust(7, ' ').rjust(8, ' '), 
+                                              pos=(turn_text_x, turn_text_y))
+        self.UI_buttons.append(self.turn_button)
+        
     # ***************************************************************************************************
     # SCROLL BUTTONS*************************************************************************************
     # ***************************************************************************************************
         
     def AdjustScrollButtons(self, up=True, down=True):
+        # Adjusts scroll button colours based on whether scroll button should be active or inactive
         if self.scroll_index == len(self.prev_guesses) - self.max_guesses_displayed:
             self.scroll_up.SetBaseColours(startcolour=self.UIcolour_nullButton)
         else:
@@ -430,7 +444,9 @@ class UI(wx.Frame):
             self.scroll_down.SetBaseColours(startcolour=self.UIcolour_button, foregroundcolour=self.UIcolour_font)
                 
     def ScrollUp(self, event):
+        # Only if the display is not already at the top
         if self.scroll_index < len(self.prev_guesses) - self.max_guesses_displayed:
+            # Increase scroll index by 1 and move previous guesses/responses/turn indicators accordingly
             self.scroll_index = self.scroll_index + 1
             self.DisplayGuesses()
             self.DisplayResponses()
@@ -438,7 +454,9 @@ class UI(wx.Frame):
             self.AdjustScrollButtons()
         
     def ScrollDown(self, event):
+        # Only if the display is not already at the bottom
         if self.scroll_index != 0:
+            # Reduce scroll index by 1 and move previous guesses/responses/turn indicators accordingly
             self.scroll_index = self.scroll_index - 1
             self.DisplayGuesses()
             self.DisplayResponses()
@@ -486,6 +504,7 @@ class UI(wx.Frame):
     # ***************************************************************************************************
         
     def DisplayTurns(self):
+        # Display the turn number for each previous guess
         for i in range(0, len(self.turn_text)):
             this_turn_text = ('Turn ' + str(len(self.turn_text) - i + self.scroll_index)).rjust(7, ' ').rjust(8, ' ')
             self.turn_text[i].SetLabel(this_turn_text)
@@ -493,22 +512,6 @@ class UI(wx.Frame):
     def ResetTurns(self):
         self.this_turn = 1
         self.turn_txt_current.SetLabel(('Turn ' + str(self.this_turn)).rjust(7, ' ').rjust(8, ' '))
-        
-    def GameScreen_Create_TurnButton(self):
-        # Get dictionaries (with shortened name)
-        s = self.control_sizes_dict
-        p = self.control_positions_dict
-        
-        # Turn button
-        turn_btn_x = p['turn_no_btn'][0]
-        turn_btn_y = p['guess_peg_1'][1] + self.control_positions_dict['turn_btn_offset'][1]
-        turn_text_x = turn_btn_x + p['turn_text_offset'][0]
-        turn_text_y = turn_btn_y + p['turn_text_offset'][1]
-        self.turn_button = UI_btn(self.pnl, '', (turn_btn_x, turn_btn_y), 
-                                  s['turn'], self.Inactive, self.UIcolour_button, disabled=True)
-        self.turn_txt_current = wx.StaticText(self.pnl, -1, ('Turn ' + str(self.this_turn)).rjust(7, ' ').rjust(8, ' '), 
-                                              pos=(turn_text_x, turn_text_y))
-        self.UI_buttons.append(self.turn_button)
         
     # ***************************************************************************************************
     # LEFT PANEL BUTTONS*********************************************************************************
@@ -789,18 +792,21 @@ class UI(wx.Frame):
             if valid : return code
             
     def GetMasterResponse(self):
-        # For a guess code, checks against a master code and returns
-        # a vector [a, b] where a is the number of correct letters and 
-        # positions and b is the number of correct letters
+        # For a guess code, checks against a master code and returns a response in the format [a, b]
         a = 0
         b = 0
+
+        # a is the number of guesses where both the colour and position are correct
         for i in range(0, len(self.current_guess)):
             if self.current_guess[i] == self.Code[i]:
                 a = a + 1
+            
+        # b is the number of guesses where the colour is correct, but not the position
         for i in range(0, len(self.Code)):
             if self.Code[i] in self.current_guess:
-                b = b + 1
+                b = b + 1     
         b = max([b - a, 0])
+        
         return ([a, b])
     
     # ***************************************************************************************************
@@ -879,7 +885,7 @@ class UI(wx.Frame):
     # ***************************************************************************************************
         
 # *******************************************************************************************************
-# BUTTON CLASSES*****************************************************************************************
+# CUSTOM BUTTON CLASSES**********************************************************************************
 # *******************************************************************************************************
         
 class prev_guess_btn(gb.GradientButton):
@@ -910,4 +916,3 @@ frm = UI(None)
 frm.Show()
 frm.Centre()
 app.MainLoop()
-    
