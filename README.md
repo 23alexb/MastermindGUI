@@ -11,4 +11,5 @@ Instructions for running:
 
 Dependencies:
   - Python2 installed
-  - wxPython installed
+  - wxPython installed:
+    - Linux (Ubuntu): "sudo apt-get install python-wxgtk3.0"
