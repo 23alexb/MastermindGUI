@@ -15,7 +15,7 @@ Desktop GUI in wxPython (Python 2) for playing Mastermind (based on the board ga
     - Linux (Ubuntu): "sudo apt-get install python-wxgtk3.0"
     - Mac: "pip install wxpython"
 
-**Gameplay:**
+**Gameplay:**  
 Similar to the board game on which this program is based, there is an underlying "code" consisting of four coloured "pegs" in a certain order. The game is played by guessing combinations of coloured pegs. The computer then responds with two numbers, one indicating how many of the pegs are the correct colour and in the correct position, and the other indicating how many of the correct coloured pegs are in the wrong position.
   
 In the user interface, you can select coloured pegs by clicking one of the eight coloured squares on the left. The active colour is displayed above the coloured
